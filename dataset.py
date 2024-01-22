@@ -38,7 +38,7 @@ class ViT_HER2ST(torch.utils.data.Dataset):
         names.sort()
         names = [i[:2] for i in names]
         self.train = train
-        self.ori = ori
+        self.ori = ori 
         self.adj = adj
         # samples = ['A1','B1','C1','D1','E1','F1','G2','H1']
         samples = names[1:33]
@@ -105,6 +105,8 @@ class ViT_HER2ST(torch.utils.data.Dataset):
         self.cumlen = np.cumsum(self.lengths)
         self.id2name = dict(enumerate(self.names))
         self.flatten=flatten
+        #breakpoint()
+        
     def __getitem__(self, index):
         ID=self.id2name[index]
         im = self.img_dict[ID]
@@ -158,7 +160,7 @@ class ViT_HER2ST(torch.utils.data.Dataset):
     def get_cnt(self,name):
         path = self.cnt_dir+'/'+name+'.tsv'
         df = pd.read_csv(path,sep='\t',index_col=0)
-
+        #breakpoint()
         return df
 
     def get_pos(self,name):
@@ -174,7 +176,7 @@ class ViT_HER2ST(torch.utils.data.Dataset):
         for i in range(len(x)):
             id.append(str(x[i])+'x'+str(y[i])) 
         df['id'] = id
-
+        #breakpoint()
         return df
 
     def get_meta(self,name,gene_list=None):

@@ -20,18 +20,13 @@ parser.add_argument('--data', type=str, default='her2st', help='dataset name:{"h
 parser.add_argument('--logger', type=str, default='../logs/my_logs', help='logger path.')
 parser.add_argument('--lr', type=float, default=1e-5, help='learning rate.')
 parser.add_argument('--dropout', type=float, default=0.2, help='dropout.')
-
 parser.add_argument('--bake', type=int, default=5, help='the number of augmented images.')
 parser.add_argument('--lamb', type=float, default=0.5, help='the loss coef of self-distillation.')
-
-
 parser.add_argument('--nb', type=str, default='F', help='zinb or nb loss.')
 parser.add_argument('--zinb', type=float, default=0.25, help='the loss coef of zinb.')
-
 parser.add_argument('--prune', type=str, default='Grid', help='how to prune the edge:{"Grid","NA"}')
 parser.add_argument('--policy', type=str, default='mean', help='the aggregation way in the GNN .')
 parser.add_argument('--neighbor', type=int, default=4, help='the number of neighbors in the GNN.')
-
 parser.add_argument('--tag', type=str, default='5-7-2-8-4-16-32', 
                     help='hyper params: kernel-patch-depth1-depth2-depth3-heads-channel,'
                          'depth1-depth2-depth3 are the depth of Convmixer, Multi-head layer in Transformer, and GNN, respectively'
@@ -90,13 +85,14 @@ model = Hist2ST(
     policy=args.policy, 
 )
 trainer = pl.Trainer(
-    gpus=[args.gpu], max_epochs=args.epochs,
+    accelerator="gpu", devices=1, max_epochs=args.epochs,
     logger=logger,check_val_every_n_epoch=2,
 )
 
 trainer.fit(model, train_loader, test_loader)
 torch.save(model.state_dict(),f"./model/{args.fold}-Hist2ST{'_cscc' if args.data=='cscc' else ''}.ckpt")
 # model.load_state_dict(torch.load(f"./model/{args.fold}-Hist2ST{'_cscc' if args.data=='cscc' else ''}.ckpt"),)
+
 pred, gt = test(model, test_loader,'cuda')
 R=get_R(pred,gt)[0]
 print('Pearson Correlation:',np.nanmean(R))

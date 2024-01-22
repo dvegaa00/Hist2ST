@@ -50,6 +50,28 @@ Required package:
 - python >=3.7
 - tensorboard
 
+## Requirements
+- pip install torch==1.13.0+cu116 torchvision==0.14.0+cu116 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu116
+- pip install pytorch-lightning
+- pip install scanpy
+- pip install tensorboard
+- pip install scprep
+- pip install easydl
+- pip install einops
+- pip install squidpy
+- pip install wandb
+- pip install wget
+- pip install combat
+- pip install torch_geometric
+- pip install positional-encodings[pytorch]
+- pip install opencv-python
+- pip install sh
+- python -m pip install lightning
+- conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia
+- pip install -U --force-reinstall charset-normalizer 
+- pip install numpy==1.22.0
+
+
 
 # Hist2ST pipeline
 

@@ -11,6 +11,9 @@ from copy import deepcopy as dcp
 from collections import defaultdict as dfd
 from sklearn.metrics import adjusted_rand_score as ari_score
 from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
+import anndata as ann
+from sklearn.cluster import KMeans
+
 class convmixer_block(nn.Module):
     def __init__(self,dim,kernel_size):
         super().__init__()
@@ -84,7 +87,7 @@ class ViT(nn.Module):
 
 class Hist2ST(pl.LightningModule):
     def __init__(self, learning_rate=1e-5, fig_size=112, label=None, 
-                 dropout=0.2, n_pos=64, kernel_size=5, patch_size=7, n_genes=785, 
+                 dropout=0.2, n_pos=128, kernel_size=5, patch_size=7, n_genes=785, 
                  depth1=2, depth2=8, depth3=4, heads=16, channel=32, 
                  zinb=0, nb=False, bake=0, lamb=0, policy='mean', 
                 ):
@@ -104,8 +107,8 @@ class Hist2ST(pl.LightningModule):
         self.x_embed = nn.Embedding(n_pos,dim)
         self.y_embed = nn.Embedding(n_pos,dim)
         self.vit = ViT(
-            channel=channel, kernel_size=kernel_size, heads=heads,
-            dim=dim, depth1=depth1,depth2=depth2, depth3=depth3, 
+            channel=channel, kernel_size=kernel_size, dim=dim, heads=heads,
+            depth1=depth1,depth2=depth2, depth3=depth3, dim_head=n_pos,
             mlp_dim=dim, dropout = dropout, policy=policy, gcn=True,
         )
         self.channel=channel

@@ -9,6 +9,7 @@ def calcADJ(coord, k=8, distanceType='euclidean', pruneTag='NA'):
     nodes=spatialMatrix.shape[0]
     Adj=torch.zeros((nodes,nodes))
     for i in np.arange(spatialMatrix.shape[0]):
+        #breakpoint()
         tmp=spatialMatrix[i,:].reshape(1,-1)
         distMat = distance.cdist(tmp,spatialMatrix, distanceType)
         if k == 0:
