@@ -29,18 +29,23 @@ def test(model,test,device='cuda'):
     ct=None
     gt=None
     loss=0
+    preds_list = []
+    gt_list = []
     with torch.no_grad():
         for patch, position, exp, adj, *_, center in tqdm(test):
+            #breakpoint()
             patch, position, adj = patch.to(device), position.to(device), adj.to(device).squeeze(0)
             pred = model(patch, position, adj)[0]
-            preds = pred.squeeze().cpu().numpy()
-            ct = center.squeeze().cpu().numpy()
+            preds = pred.cpu().numpy()
+            #preds = pred.squeeze().cpu().numpy()
+            #ct = center.squeeze().cpu().numpy()
             gt = exp.squeeze().cpu().numpy()
-    adata = ad.AnnData(preds)
-    adata.obsm['spatial'] = ct
-    adata_gt = ad.AnnData(gt)
-    adata_gt.obsm['spatial'] = ct
-    return adata,adata_gt
+    #adata = ad.AnnData(preds)
+    #adata.obsm['spatial'] = ct
+    #adata_gt = ad.AnnData(gt)
+    #adata_gt.obsm['spatial'] = ct
+    #return adata,adata_gt
+    return preds, gt
 def cluster(adata,label):
     idx=label!='undetermined'
     tmp=adata[idx]

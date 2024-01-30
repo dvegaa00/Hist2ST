@@ -18,18 +18,20 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from our_dataset import OUR_BUILDER
 from spared.datasets import get_dataset
 from spared.metrics import get_metrics
+import anndata as ad
+from datetime import datetime
+from log_functions import *
 
-#torch.cuda.empty_cache() 
-#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
-#CUDA_LAUNCH_BLOCKING = "1"
 parser = get_main_parser()
 args = parser.parse_args()
+args_dict = vars(args)
 
 args.cuda = os.environ["CUDA_VISIBLE_DEVICES"]
 os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
+# Seed everything
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -41,7 +43,7 @@ kernel,patch,depth1,depth2,depth3,heads,channel=map(lambda x:int(x),args.tag.spl
 label=None
 dataset = get_dataset(args.dataset)
 
-#Split data to train val and test and creat an ID to Name list for the get item
+# Split data to train val and test and creat an ID to Name list for the get item
 train_split = dataset.adata[dataset.adata.obs["split"]=="train"]
 train_slides = train_split.obs["slide_id"].unique().tolist()
 slide_names = train_slides.copy()
@@ -50,79 +52,61 @@ val_split = dataset.adata[dataset.adata.obs["split"]=="val"]
 val_slides = val_split.obs["slide_id"].unique().tolist()
 slide_names += val_slides
 
-test_split = dataset.adata[dataset.adata.obs["split"]=="test"]
-test_slides = test_split.obs["slide_id"].unique().tolist()
-slide_names += test_slides
-
-#ID to Name list
+if "test" in dataset.adata.obs["split"].unique().tolist():
+    test_split = dataset.adata[dataset.adata.obs["split"]=="test"]
+    test_slides = test_split.obs["slide_id"].unique().tolist()
+    slide_names += test_slides
+    
+# ID to Name list
 id2name = dict(enumerate(slide_names))
 
-#Our dataser builder
+# Call our dataset builder
 custom_dataset = OUR_BUILDER(adata=dataset.adata, prediction=args.prediction_layer, patch_size=224, prune=args.prune, neighs=args.neighbor, id2name=id2name)
 
-#Split the dataset
+# Split the dataset
 train_ids=[key for key, val in id2name.items() if val in train_slides]
 val_ids=[key for key, val in id2name.items() if val in val_slides]
-test_ids=[key for key, val in id2name.items() if val in test_slides]
+if "test" in dataset.adata.obs["split"].unique().tolist():
+    test_ids=[key for key, val in id2name.items() if val in test_slides]
 
 trainset = torch.utils.data.Subset(custom_dataset, train_ids)
 valset = torch.utils.data.Subset(custom_dataset, val_ids)
-testset = torch.utils.data.Subset(custom_dataset, test_ids)
+if "test" in dataset.adata.obs["split"].unique().tolist():    
+    testset = torch.utils.data.Subset(custom_dataset, test_ids)
 
-"""
-trainset = OUR_BUILDER(adata=train_split, prediction=args.prediction_layer, patch_size=224, prune=args.prune, neighs=args.neighbor, id2name=id2name)
-valset = OUR_BUILDER(adata=val_split, prediction=args.prediction_layer, patch_size=224, prune=args.prune, neighs=args.neighbor, id2name=id2name)
-testset = OUR_BUILDER(adata=test_split, prediction=args.prediction_layer, patch_size=224, prune=args.prune, neighs=args.neighbor, id2name=id2name)
-"""
-
-#Load data
+# Load data
 train_loader = DataLoader(trainset, batch_size=1, num_workers=0, shuffle=True)
 val_loader = DataLoader(valset, batch_size=1, num_workers=0, shuffle=True)
-test_loader = DataLoader(testset, batch_size=1, num_workers=0, shuffle=False)
+test_loader = None
+if "test" in dataset.adata.obs["split"].unique().tolist():
+    test_loader = DataLoader(testset, batch_size=1, num_workers=0, shuffle=False)
 
-gene_list = dataset.adata.var["gene_symbol"].tolist()
-genes = len(gene_list)
- 
-"""
-trainset = pk_load(args.fold,'train',False,args.data,neighs=args.neighbor, prune=args.prune)
-train_loader = DataLoader(trainset, batch_size=1, num_workers=0, shuffle=True)
-testset = pk_load(args.fold,'test',False,args.data,neighs=args.neighbor, prune=args.prune)
-test_loader = DataLoader(testset, batch_size=1, num_workers=0, shuffle=False)
-label=None
-if args.fold in [5,11,17,23,26,30] and args.data=='her2st':
-    label=testset.label[testset.names[0]]
+# Gene list (required as parameter in the model)
+genes = dataset.adata.shape[1]
 
-genes=785
-if args.data=='cscc':
-    args.name+='_cscc'
-    genes=171
+# Logger 
+# If exp_name is None then generate one with the current time
+if args.exp_name == 'None':
+    args.exp_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
-log_name=''
-if args.zinb>0:
-    if args.nb=='T':
-        args.name+='_nb'
-    else:
-        args.name+='_zinb'
-    log_name+=f'-{args.zinb}'
-if args.bake>0:
-    args.name+='_bake'
-    log_name+=f'-{args.bake}-{args.lamb}'
-log_name=f'{args.fold}-{args.name}-{args.tag}'+log_name+f'-{args.policy}-{args.neighbor}'
-logger = TensorBoardLogger(
-    args.logger, 
-    name=log_name
-)
-print(log_name)
-"""
+# Start wandb configs  
+wandb_logger = WandbLogger(
+    project='spared_hist2st_sota',
+    name=args.exp_name,
+    log_model=False,
+    entity="sepal_v2")
 
-log_name=f'{args.name}-{args.dataset}-{args.lr}'
-logger = TensorBoardLogger(
-    args.logger, 
-    name=log_name
-)
+# Get save path and create is in case it is necessary
+save_path = os.path.join('results', args.exp_name)
+os.makedirs(save_path, exist_ok=True)
 
+# Save script arguments in json file
+with open(os.path.join(save_path, 'script_params.json'), 'w') as f:
+    json.dump(args_dict, f, indent=4)
+
+# Declare model
 model = Hist2ST(
-    depth1=depth1, depth2=depth2, depth3=depth3,
+    args=args, depth1=depth1, depth2=depth2, depth3=depth3,
     n_genes=genes, learning_rate=args.lr, label=label, 
     kernel_size=kernel, patch_size=patch,
     heads=heads, channel=channel, dropout=args.dropout,
@@ -132,22 +116,45 @@ model = Hist2ST(
     fig_size = 224
 )
 
-trainer = pl.Trainer(
+# Define dict to know whether to maximize or minimize each metric
+max_min_dict = {'PCC-Gene': 'max', 'PCC-Patch': 'max', 'MSE': 'min', 'MAE': 'min', 'R2-Gene': 'max', 'R2-Patch': 'max', 'Global': 'max'}
+# Define checkpoint callback to save best model in validation
+checkpoint_callback = ModelCheckpoint(
+    dirpath=save_path,
+    monitor=f'val_{args.optim_metric}', # Choose your validation metric
+    save_top_k=0, # Save only the best model
+    mode=max_min_dict[args.optim_metric], # Choose "max" for higher values or "min" for lower values
+)
+
+# Define the trainier and fit the model
+trainer = L.Trainer(
     max_steps=args.max_steps, 
     accelerator="gpu", 
-    devices=2,
-    logger=logger,
-    check_val_every_n_epoch=2,
-    enable_progress_bar=True)
+    devices=1,
+    logger=wandb_logger,
+    val_check_interval=args.val_check_interval,
+    log_every_n_steps=args.val_check_interval,
+    check_val_every_n_epoch=None,
+    enable_progress_bar=True,
+    enable_model_summary=True,
+    callbacks=[checkpoint_callback]
+    )
 
-trainer.fit(model, train_loader, test_loader)
-torch.save(model.state_dict(),f"./model/{args.dataset}-Hist2ST.ckpt")
-# model.load_state_dict(torch.load(f"./model/{args.fold}-Hist2ST{'_cscc' if args.data=='cscc' else ''}.ckpt"),)
-breakpoint()
-pred, gt = test(model, test_loader,'cuda')
-mask = test_split.layers["mask"]
-metrics = get_metrics(gt, pred, maks)
-#R=get_R(pred,gt)[0]
-#print('Pearson Correlation:',np.nanmean(R))
-#clus,ARI=cluster(pred,label)
-#print('ARI:',ARI)
+trainer.fit(model, train_loader, val_loader)
+# Load the best model after training
+model.load_state_dict(model.model_best_weights)
+# Test model if there is a test dataloader
+if not (test_loader is None):
+    trainer.test(model, dataloaders=test_loader)
+
+# Get global prediction layer and log final artifacts
+get_predictions(adata=dataset.adata,
+    args=args,
+    model=model,
+    layer=args.prediction_layer,
+    device=device)
+
+# Log prediction images
+dataset.log_pred_image()
+wandb.finish()
+

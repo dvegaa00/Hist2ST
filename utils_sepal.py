@@ -38,10 +38,10 @@ def get_main_parser():
     parser.add_argument('--pos_emb_sum',                type=str2bool,      default=False,                      help='Whether or not to sum the nodes-feature with the positional embeddings. In case False, the positional embeddings are only concatenated.')
     parser.add_argument('--h_global',                   type=str2h_list,    default='//-1//-1//-1',             help='List of dimensions of the hidden layers of the graph convolutional network.')
     parser.add_argument('--pooling',                    type=str,           default='None',                     help='Global graph pooling to use at the end of the graph convolutional network. Case sensitive, options available at but must be a global pooling: https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#pooling-layers')
-    parser.add_argument('--dropout',                    type=float,         default=0.0,                        help='Dropout to use in the model to avoid overfitting.')
+    parser.add_argument('--dropout',                    type=float,         default=0,                        help='Dropout to use in the model to avoid overfitting.')
     # Train parameters #######################################################################################################################################################################
     parser.add_argument('--optim_metric',               type=str,           default='MSE',                      help='Metric that should be optimized during training.', choices=['PCC-Gene', 'MSE', 'MAE', 'Global'])
-    parser.add_argument('--epochs',                     type=int,           default=50,                         help='Number of epochs to train de model.')
+    parser.add_argument('--epochs',                     type=int,           default=350,                        help='Number of epochs to train de model.')
     parser.add_argument('--batch_size',                 type=int,           default=256,                        help='The batch size to train model.')
     parser.add_argument('--shuffle',                    type=str2bool,      default=True,                       help='Whether or not to shuffle the data in dataloaders.')
     parser.add_argument('--lr',                         type=float,         default=1e-2,                       help='Learning rate to use.')
@@ -51,7 +51,8 @@ def get_main_parser():
     parser.add_argument('--cuda',                       type=str,           default='0',                        help='CUDA device to run the model.')
     parser.add_argument('--exp_name',                   type=str,           default='None',                     help='Name of the experiment to save in the results folder. "None" will assign a date coded name.')
     parser.add_argument('--train',                      type=str2bool,      default=True,                       help='If true it will train, if false it only tests')
-    parser.add_argument('--max_steps',                      type=str2bool,      default=1000,                       help='Steps for training')
+    parser.add_argument('--max_steps',                  type=int,           default=1000,                       help='Steps for training')
+    parser.add_argument('--val_check_interval',         type=int,           default=10,                         help='Check in validation')
     #HIST2ST parameters
     parser.add_argument('--gpu', type=int, default=2, help='the id of gpu.')
     parser.add_argument('--fold', type=int, default=5, help='dataset fold.')

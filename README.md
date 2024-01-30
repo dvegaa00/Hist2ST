@@ -70,6 +70,7 @@ Required package:
 - conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia
 - pip install -U --force-reinstall charset-normalizer 
 - pip install numpy==1.22.0
+- pip install plotly
 
 
 
