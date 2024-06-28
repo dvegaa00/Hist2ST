@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from scipy.spatial import distance_matrix, minkowski_distance, distance
+
 def calcADJ(coord, k=8, distanceType='euclidean', pruneTag='NA'):
     r"""
     Calculate spatial Matrix directly use X/Y coordinates

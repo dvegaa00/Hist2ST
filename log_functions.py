@@ -9,7 +9,7 @@ import lightning as L
 from lightning.pytorch import Trainer, seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-from utils_sepal import *
+from utils import *
 from HIST2ST import *
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
