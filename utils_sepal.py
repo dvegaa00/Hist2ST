@@ -44,7 +44,7 @@ def get_main_parser():
     parser.add_argument('--epochs',                     type=int,           default=350,                        help='Number of epochs to train de model.')
     parser.add_argument('--batch_size',                 type=int,           default=256,                        help='The batch size to train model.')
     parser.add_argument('--shuffle',                    type=str2bool,      default=True,                       help='Whether or not to shuffle the data in dataloaders.')
-    parser.add_argument('--lr',                         type=float,         default=1e-2,                       help='Learning rate to use.')
+    parser.add_argument('--lr',                         type=float,         default=1e-3,                       help='Learning rate to use.')
     parser.add_argument('--optimizer',                  type=str,           default='Adam',                     help='Optimizer to use in training. Options available at: https://pytorch.org/docs/stable/optim.html It will just modify main optimizers and not sota (they have fixed optimizers).')
     parser.add_argument('--momentum',                   type=float,         default=0.9,                        help='Momentum to use in the optimizer if it receives this parameter. If not, it is not used. It will just modify main optimizers and not sota (they have fixed optimizers).')
     parser.add_argument('--average_test',               type=str2bool,      default=False,                      help='If True it will compute the 8 symmetries of an image during test and the prediction will be the average of the 8 outputs of the model.')

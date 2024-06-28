@@ -41,9 +41,21 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 kernel,patch,depth1,depth2,depth3,heads,channel=map(lambda x:int(x),args.tag.split('-'))
 label=None
+
+
 dataset = get_dataset(args.dataset)
 
 # Split data to train val and test and creat an ID to Name list for the get item
+if args.prediction_layer == 'noisy':
+    # Copy the layer c_t_log1p to the layer noisy
+    noisy_layer = dataset.adata.layers['c_t_log1p'].copy()
+    # Get zero mask
+    zero_mask = ~dataset.adata.layers['mask']
+    # Zero out the missing values
+    noisy_layer[zero_mask] = 0
+    # Add the layer to the adata
+    dataset.adata.layers['noisy'] = noisy_layer
+
 train_split = dataset.adata[dataset.adata.obs["split"]=="train"]
 train_slides = train_split.obs["slide_id"].unique().tolist()
 slide_names = train_slides.copy()
@@ -95,6 +107,7 @@ wandb_logger = WandbLogger(
     name=args.exp_name,
     log_model=False,
     entity="sepal_v2")
+#TODO: cambiar sepal_v2 a Benckmark
 
 # Get save path and create is in case it is necessary
 save_path = os.path.join('results', args.exp_name)

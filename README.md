@@ -1,112 +1,55 @@
-# Spatial Transcriptomics Prediction from Histology jointly through Transformer and Graph Neural Networks
-### Yuansong Zeng, Zhuoyi Wei, Weijiang Yu, Rui Yin,  Bingling Li, Zhonghui Tang, Yutong Lu, Yuedong Yang*
+# Hist2ST Adapted for the e Spatially Resolved Expression Database (SpaRED)
 
-
- Here, we have developed Hist2ST, a deep learning-based model using histology images to predict RNA-seq expression.
-  At each sequenced spot, the corre-sponding histology image is cropped into an image patch, from which 2D vision 
-  features are learned through convolutional operations. Meanwhile, the spatial relations with the whole image and
-   neighbored patches are captured through Transformer and graph neural network modules, respectively. These learned
-    features are then used to predict the gene expression by following the zero-inflated negative binomial (ZINB) distribution.
-     To alleviate the impact by the small spatial transcriptomics data, a self-distillation mechanism is employed for efficient
-      learning of the model. Hist2ST was tested on the HER2-positive breast cancer and the cutaneous squamous cell carcinoma datasets, 
-      and shown to outperform existing methods in terms of both gene expression prediction and following spatial region identification.
+Hist2ST is a deep learning-based model developed by Zeng, which uses histology images to predict RNA-seq expression. At each sequenced spot, the corre-sponding histology image is cropped into an image patch, from which 2D vision features are learned through convolutional operations. Meanwhile, the spatial relations with the whole image and neighbored patches are captured through Transformer and graph neural network modules, respectively. These learned features are then used to predict the gene expression by following the zero-inflated negative binomial (ZINB) distribution. To alleviate the impact by the small spatial transcriptomics data, a self-distillation mechanism is employed for efficient learning of the model. Hist2ST was tested on the HER2-positive breast cancer and the cutaneous squamous cell carcinoma datasets, and shown to outperform existing methods in terms of both gene expression prediction and following spatial region identification.
        
-
-
 ![(Variational) gcn](Workflow.png)
 
+To apply Hist2ST to the SpaRED database, we have adapted the original repository to fit the standardized format of SpaRED datasets. This adaptation allows researchers to seamlessly use Hist2ST for spatial transcriptomics prediction on both SpaRED and any custom datasets that follow the SpaRED format.
 
+## Setup 
+To setup the enviroment and install the required libraries run the following commands on your terminal:
 
-# Usage
-```python
-import torch
-from HIST2ST import Hist2ST
+```bash
+conda create -n "myenv" python=3.8.0
 
-model = Hist2ST(
-    depth1=2, depth2=8, depth3=4,
-    n_genes=785, learning_rate=1e-5,
-    kernel_size=5, patch_size=7, fig_size=112,
-    heads=16, channel=32, dropout=0.2,
-    zinb=0.25, nb=False,
-    bake=5, lamb=0.5, 
-    policy='mean', 
-)
+conda activate myenv
 
-# patches: [N, 3, W, H]
-# coordinates: [N, 2]
-# adjacency: [N, N]
-pred_expression = model(patches, coordinates,adjacency)  # [N, n_genes]
-
+pip install -r requirements.txt
 ```
 
-Note: the detailed parameters instructions please see [HIST2ST_train](https://github.com/biomed-AI/Hist2ST/blob/main/HIST2ST_train.py)
+# Run Hist2ST 
 
+### Training and Evaluation on SpaRED Dataset
 
-## System environment
-Required package:
-- PyTorch >= 1.10
-- pytorch-lightning >= 1.4
-- scanpy >= 1.8
-- python >=3.7
-- tensorboard
+To train and evaluate Hist2ST on the SpaRED datasets you must run the following command:
 
-## Requirements
-- pip install torch==1.13.0+cu116 torchvision==0.14.0+cu116 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu116
-- pip install pytorch-lightning
-- pip install scanpy
-- pip install tensorboard
-- pip install scprep
-- pip install easydl
-- pip install einops
-- pip install squidpy
-- pip install wandb
-- pip install wget
-- pip install combat
-- pip install torch_geometric
-- pip install positional-encodings[pytorch]
-- pip install opencv-python
-- pip install sh
-- python -m pip install lightning
-- conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia
-- pip install -U --force-reinstall charset-normalizer 
-- pip install numpy==1.22.0
-- pip install plotly
+```bash
+python HIST2ST_main.py --dataset $dataset_name$ --prediction_layer $prediction_layer$
+```
+* Replace $dataset_name$ with the name of any dataset available in SpaRED (default = None).
+* Replace $prediction_layer$ with the layer used to train and evaluate the model (default = c_t_log1p). 
 
+This command loads the preprocessed dataset directly from the SpaRED repository and makes predictions on the specified layer. The results are logged in Weights and Biases.
 
+### Training and Evaluation on Custom Datasets:
 
-# Hist2ST pipeline
+To train and evaluate Hist2ST on a custom dataset, you must first ensure that your AnnData object (adata) follows the SpaRED format. Then, run the following command:
 
-See [tutorial.ipynb](tutorial.ipynb)
+```bash
+python HIST2ST_main.py --path_adata $path_to_adata$ --prediction_layer $prediction_layer$
+```
+* Replace $path_to_adata$ with the path to your preprocessed adata file (in .h5ad format) (default = None).
+* Replace $prediction_layer$ with the layer used to train and evaluate the model (default = c_t_log1p).
 
+When `$path_to_adata$` is provided, the model automatically loads the adata from the specified path and ignores the `dataset` parameter, which is used to load an available SpaRED dataset.
 
-NOTE: Run the following command if you want to run the script tutorial.ipynb
- 
-1.  Please run the script `download.sh` in the folder [data](https://github.com/biomed-AI/Hist2ST/tree/main/data) 
-
-or 
-
-Run the command line `git clone https://github.com/almaan/her2st.git` in the dir [data](https://github.com/biomed-AI/Hist2ST/tree/main/data) 
-
-2. Run `gunzip *.gz` in the dir `Hist2ST/data/her2st/data/ST-cnts/` to unzip the gz files
-
-
-# Datasets
-
- -  human HER2-positive breast tumor ST data https://github.com/almaan/her2st/.
- -  human cutaneous squamous cell carcinoma 10x Visium data (GSE144240).
- -  you can also download all datasets from [here](https://www.synapse.org/#!Synapse:syn29738084/files/)
-
-
-# Trained models
-All Trained models of our method on HER2+ and cSCC datasets can be found at [synapse](https://www.synapse.org/#!Synapse:syn29738084/files/)
-
+This command loads the custom preprocessed dataset directly from the specified path and makes predictions on the defined layer. The results are logged in Weights and Biases. 
 
 # Citation
 
-Please cite our paper:
+Please cite Hist2ST paper:
 
 ```
-
 @article{zengys,
   title={Spatial Transcriptomics Prediction from Histology jointly through Transformer and Graph Neural Networks},
   author={ Yuansong Zeng, Zhuoyi Wei, Weijiang Yu, Rui Yin,  Bingling Li, Zhonghui Tang, Yutong Lu, Yuedong Yang},

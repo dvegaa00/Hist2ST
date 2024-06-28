@@ -5,3 +5,4 @@ spared/
 wandb/
 results/
 spared
+*.sh
