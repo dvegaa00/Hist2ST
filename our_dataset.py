@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import ImageFile, Image
-from utils import read_tiff, get_data
 from graph_construction import calcADJ
 from collections import defaultdict as dfd
 ImageFile.LOAD_TRUNCATED_IMAGES = True
