@@ -38,10 +38,10 @@ To train and evaluate Hist2ST on a custom dataset, you must first ensure that yo
 ```bash
 python HIST2ST_main.py --path_adata $path_to_adata$ --prediction_layer $prediction_layer$
 ```
-* Replace $path_to_adata$ with the path to your preprocessed adata file (in .h5ad format) (default = None).
-* Replace $prediction_layer$ with the layer used to train and evaluate the model (default = c_t_log1p).
+* Replace `path_to_adata` with the path to your preprocessed adata file (in .h5ad format) (default = None).
+* Replace `prediction_layer` with the layer used to train and evaluate the model (default = c_t_log1p).
 
-When `$path__to__adata$` is provided, the model automatically loads the adata from the specified path and ignores the `dataset` parameter, which is used to load an available SpaRED dataset.
+When `path_to_data` is provided, the model automatically loads the adata from the specified path and ignores the `dataset` parameter, which is used to load an available SpaRED dataset.
 
 This command loads the custom preprocessed dataset directly from the specified path and makes predictions on the defined layer. The results are logged in Weights and Biases. 
 
