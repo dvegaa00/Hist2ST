@@ -1,4 +1,4 @@
-# Hist2ST Adapted for the e Spatially Resolved Expression Database (SpaRED)
+# Hist2ST Adapted for the Spatially Resolved Expression Database (SpaRED)
 
 Hist2ST is a deep learning-based model developed by Zeng, which uses histology images to predict RNA-seq expression. At each sequenced spot, the corre-sponding histology image is cropped into an image patch, from which 2D vision features are learned through convolutional operations. Meanwhile, the spatial relations with the whole image and neighbored patches are captured through Transformer and graph neural network modules, respectively. These learned features are then used to predict the gene expression by following the zero-inflated negative binomial (ZINB) distribution. To alleviate the impact by the small spatial transcriptomics data, a self-distillation mechanism is employed for efficient learning of the model. Hist2ST was tested on the HER2-positive breast cancer and the cutaneous squamous cell carcinoma datasets, and shown to outperform existing methods in terms of both gene expression prediction and following spatial region identification.
        
