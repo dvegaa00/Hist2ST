@@ -11,6 +11,7 @@ from torch.autograd import Function
 from torch.autograd.variable import *
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+
 class SelectItem(nn.Module):
     def __init__(self, item_index):
         super(SelectItem, self).__init__()

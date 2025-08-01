@@ -17,6 +17,13 @@ from sklearn.cluster import KMeans
 from spared.metrics import get_metrics
 from torch.distributed import rpc
 
+torch.backends.cudnn.enabled = False
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+import os
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+
 class convmixer_block(nn.Module):
     def __init__(self,dim,kernel_size):
         super().__init__()
@@ -186,6 +193,7 @@ class Hist2ST(L.LightningModule):
             x,_,h=self(new_patch,center,adj,True)
             bake_x.append((x.unsqueeze(0),h.unsqueeze(0)))
         return bake_x
+    
     def distillation(self,bake_x):
         new_x,coef=zip(*bake_x)
         coef=torch.cat(coef,0)
@@ -193,6 +201,7 @@ class Hist2ST(L.LightningModule):
         coef=F.softmax(coef,dim=0)
         new_x=(new_x*coef).sum(0)
         return new_x
+    
     def training_step(self, batch, batch_idx):
         patch, center, exp, adj, oris, sfs, *_, mask = batch
         adj=adj.squeeze(0)
@@ -271,7 +280,6 @@ class Hist2ST(L.LightningModule):
         return loss
 
     def on_validation_epoch_end(self):
-
         # Unpack the list of tuples
         glob_expression_pred, glob_expression_gt, glob_mask = zip(*self.validation_step_outputs)
         # Concatenate outputs along the sample dimension
@@ -317,7 +325,6 @@ class Hist2ST(L.LightningModule):
         return pred, exp, mask
 
     def on_test_epoch_end(self):
-        
         # Unpack the list of tuples
         glob_expression_pred, glob_expression_gt, glob_mask = zip(*self.test_step_outputs)
         # Concatenate outputs along the sample dimension

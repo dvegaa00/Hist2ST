@@ -40,59 +40,62 @@ torch.backends.cudnn.deterministic = True
 kernel,patch,depth1,depth2,depth3,heads,channel=map(lambda x:int(x),args.tag.split('-'))
 label=None
 
+#dataset = get_dataset(args.dataset, visualize=False)
+#adata = dataset.adata
 
-dataset = get_dataset(args.dataset)
+path = f"/home/dvegaa/ST_Diffusion/stDiff_Spared/processed_data/{args.dataset}/adata.h5ad"
+adata = ad.read_h5ad(path)
 
-# Split data to train val and test and creat an ID to Name list for the get item
-if args.prediction_layer == 'noisy':
-    # Copy the layer c_t_log1p to the layer noisy
-    noisy_layer = dataset.adata.layers['c_t_log1p'].copy()
-    # Get zero mask
-    zero_mask = ~dataset.adata.layers['mask']
-    # Zero out the missing values
-    noisy_layer[zero_mask] = 0
-    # Add the layer to the adata
-    dataset.adata.layers['noisy'] = noisy_layer
+n = args.division
+train_split = adata[adata.obs["split"]=="train"]
+train_split = get_divided_adata(adata=train_split, n=n)
 
-train_split = dataset.adata[dataset.adata.obs["split"]=="train"]
 train_slides = train_split.obs["slide_id"].unique().tolist()
 slide_names = train_slides.copy()
 
-val_split = dataset.adata[dataset.adata.obs["split"]=="val"]
+val_split = adata[adata.obs["split"]=="val"]
+val_split = get_divided_adata(adata=val_split, n=n)
+
 val_slides = val_split.obs["slide_id"].unique().tolist()
 slide_names += val_slides
 
-if "test" in dataset.adata.obs["split"].unique().tolist():
-    test_split = dataset.adata[dataset.adata.obs["split"]=="test"]
+if "test" in adata.obs["split"].unique().tolist():
+    test_split = adata[adata.obs["split"]=="test"]
+    test_split = get_divided_adata(adata=test_split, n=n)
+
     test_slides = test_split.obs["slide_id"].unique().tolist()
     slide_names += test_slides
+
+    adata = ad.concat([train_split, val_split, test_split], join="outer")
+else:
+    adata = ad.concat([train_split, val_split], join="outer")
     
 # ID to Name list
+print(slide_names)
 id2name = dict(enumerate(slide_names))
-
 # Call our dataset builder
-custom_dataset = OUR_BUILDER(adata=dataset.adata, prediction=args.prediction_layer, patch_size=224, prune=args.prune, neighs=args.neighbor, id2name=id2name)
+custom_dataset = OUR_BUILDER(adata=adata, prediction=args.prediction_layer, patch_size=224, prune=args.prune, neighs=args.neighbor, id2name=id2name)
 
 # Split the dataset
 train_ids=[key for key, val in id2name.items() if val in train_slides]
 val_ids=[key for key, val in id2name.items() if val in val_slides]
-if "test" in dataset.adata.obs["split"].unique().tolist():
+if "test" in adata.obs["split"].unique().tolist():
     test_ids=[key for key, val in id2name.items() if val in test_slides]
 
 trainset = torch.utils.data.Subset(custom_dataset, train_ids)
 valset = torch.utils.data.Subset(custom_dataset, val_ids)
-if "test" in dataset.adata.obs["split"].unique().tolist():    
+if "test" in adata.obs["split"].unique().tolist():    
     testset = torch.utils.data.Subset(custom_dataset, test_ids)
 
 # Load data
 train_loader = DataLoader(trainset, batch_size=1, num_workers=0, shuffle=True)
 val_loader = DataLoader(valset, batch_size=1, num_workers=0, shuffle=True)
 test_loader = None
-if "test" in dataset.adata.obs["split"].unique().tolist():
+if "test" in adata.obs["split"].unique().tolist():
     test_loader = DataLoader(testset, batch_size=1, num_workers=0, shuffle=False)
 
 # Gene list (required as parameter in the model)
-genes = dataset.adata.shape[1]
+genes = adata.shape[1]
 
 # Logger 
 # If exp_name is None then generate one with the current time
@@ -101,11 +104,16 @@ if args.exp_name == 'None':
 
 # Start wandb configs  
 wandb_logger = WandbLogger(
-    project='spared_hist2st_sota',
+    project='Hist2ST',
     name=args.exp_name,
     log_model=False,
-    entity="sepal_v2")
+    entity="spared_v2")
 #TODO: cambiar sepal_v2 a Benckmark
+
+wandb.init(project="Hist2ST", entity="spared_v2", name=args.exp_name)
+wandb.log({"prediction layer": args.prediction_layer,
+           "dataset": args.dataset,
+           "division_n": n})
 
 # Get save path and create is in case it is necessary
 save_path = os.path.join('results', args.exp_name)
@@ -154,18 +162,19 @@ trainer = L.Trainer(
 trainer.fit(model, train_loader, val_loader)
 # Load the best model after training
 model.load_state_dict(model.model_best_weights)
+
 # Test model if there is a test dataloader
 if not (test_loader is None):
     trainer.test(model, dataloaders=test_loader)
 
+
 # Get global prediction layer and log final artifacts
-get_predictions(adata=dataset.adata,
+get_predictions(adata=adata,
     args=args,
     model=model,
     layer=args.prediction_layer,
     device=device)
 
 # Log prediction images
-dataset.log_pred_image()
+#dataset.log_pred_image()
 wandb.finish()
-

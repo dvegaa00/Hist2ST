@@ -6,3 +6,7 @@ wandb/
 results/
 spared
 *.sh
+imput_results/
+lightning_logs/
+patches_plots/
+processed_data/

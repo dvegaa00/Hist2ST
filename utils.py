@@ -13,6 +13,7 @@ import wandb
 from tqdm import tqdm
 import argparse
 from spared.metrics import get_metrics
+import anndata as ad
 
 
 # Auxiliary function to use booleans in parser
@@ -26,7 +27,8 @@ def get_main_parser():
     parser = argparse.ArgumentParser(description='Code for expression prediction using contrastive learning implementation.')
     # Dataset parameters #####################################################################################################################################################################
     parser.add_argument('--dataset',                    type=str,           default='10xgenomic_human_brain',   help='Dataset to use.')
-    parser.add_argument('--prediction_layer',           type=str,           default='c_d_log1p',                help='The prediction layer from the dataset to use.')
+    parser.add_argument('--prediction_layer',           type=str,           default='c_t_log1p',                help='The prediction layer from the dataset to use.')
+    parser.add_argument('--division',                   type=int,           default=2,                help='In hiw many pieces to divide the slides')
     # Model parameters #######################################################################################################################################################################
     parser.add_argument('--sota',                       type=str,           default='pretrain',                 help='The name of the sota model to use. "None" calls main.py, "nn_baselines" calls nn_baselines.py, "pretrain" calls pretrain_backbone.py, and any other calls main_sota.py', choices=['None', 'pretrain', 'stnet', 'nn_baselines', "histogene"])
     parser.add_argument('--img_backbone',               type=str,           default='ShuffleNetV2',             help='Backbone to use for image encoding.', choices=['resnet', 'ConvNeXt', 'MobileNetV3', 'ResNetXt', 'ShuffleNetV2', 'ViT', 'WideResNet', 'densenet', 'swin'])
@@ -77,6 +79,78 @@ def get_main_parser():
     ##########################################################################################################################################################################################
 
     return parser
+
+def divide_patches_generalized(coords, n=2):
+
+    # Obtener valores Ãºnicos y ordenados
+    x_unique = np.sort(coords["x_coord"].unique())  
+    y_unique = np.sort(coords["y_coord"].unique())[::-1]  
+
+    # Mapear coordenadas a Ã­ndices
+    x_to_idx = {val: i for i, val in enumerate(x_unique)}
+    y_to_idx = {val: i for i, val in enumerate(y_unique)}
+
+    # Definir tamaÃ±o de la cuadrÃ­cula
+    grid_width = len(x_unique)
+    grid_height = len(y_unique)
+
+    # Calcular tamano de cada cuadrante
+    step_x = grid_width // n
+    step_y = grid_height // n
+
+    # Diccionario para almacenar cuadrantes
+    index_quadrants = {f"Q{r * n + c + 1}": [] for r in range(n) for c in range(n)}
+
+    # Asignar parches a cuadrantes
+    for (x, y), index in zip(coords.values, coords.index):
+        x_idx = x_to_idx[x]
+        y_idx = y_to_idx[y]
+
+        # Determinar el cuadrante
+        row = min(y_idx // step_y, n - 1)  # Evitar salir del rango por redondeo
+        col = min(x_idx // step_x, n - 1)
+        quadrant = f"Q{row * n + col + 1}"
+        
+        index_quadrants[quadrant].append(index)
+    
+    # Revisamos si todos los quadrantes tienen al menos un spot, sino los borramos
+    index_quadrants = {k: v for k, v in index_quadrants.items() if v}
+    # Revisamos si cada cuadrante queda con por lo menos 5 spots en el, si esto no ocurre justamos datos
+    for key, indexes in list(index_quadrants.items()):
+        if len(indexes) < 5:
+            subimage_id = int(key.split('Q')[-1])
+            # Con esto se obtiene el nuevo id
+            # Evaluamos si tengo que sumarselo al siguiente cuadrante, si es el caso de es 'Q_n^2' entonces los añado en 'Q_n^2 - 1'
+            new_subimage_id = subimage_id + 1 if subimage_id < n**2 else subimage_id - 1
+            # Agregamos la info y luego hacemos sort
+            index_quadrants[f'Q{new_subimage_id}'] += indexes
+            index_quadrants[f'Q{new_subimage_id}'] = sorted(index_quadrants[f'Q{new_subimage_id}'])
+            # Borramos la key con menos spots del umbral
+            index_quadrants.pop(key, None)
+
+    return index_quadrants
+
+
+def get_divided_adata(adata, n=2):
+    slides = adata.obs["slide_id"].unique().tolist()
+    adatas_concat = []
+
+    for slide in slides:
+        adata_slide = adata[adata.obs["slide_id"]==slide]
+        # Extract coords
+        coord =  pd.DataFrame(adata_slide.obsm['spatial'], columns=['x_coord', 'y_coord'])
+        coords_index = coord.index
+        # Get indices per quadrant
+        #index_quadrants = divide_slide(coords=coord)
+        index_quadrants = divide_patches_generalized(coords=coord, n=n)
+        # Get mini adatas
+        for i in index_quadrants.keys():
+            filtered_adata = adata_slide[index_quadrants[i]]
+            filtered_adata.obs["slide_id"] = f"{slide}_{i}"
+            adatas_concat.append(filtered_adata)
+    
+    merged_adata = ad.concat(adatas_concat, join="outer")
+    return merged_adata
 
 def train_simple(model, loader, criterion, optimizer, transforms):
     
